@@ -15,6 +15,33 @@ This can be useful when attempting to write data structures that work with immut
 
 `rebindable` also contains `rebindable.Nullable`, a demo implementation of `Nullable` on top of `DeepUnqual`.
 
+# How to use:
+
+To use `rebindable.DeepUnqual`, define `DeepUnqual!T store` as the field type of your container,
+then pointer cast to access the value:
+
+```
+private ref CopyConstness!(This, T) payload(this This)() @trusted
+{
+  return *cast(typeof(return)*) &store;
+}
+```
+
+Because `DeepUnqual` does not account for lifetimes, when assigning, you must manually create dangling copies of
+passed values, by exploiting the (specced!) fact that unions do not call field destructors:
+
+```
+static union BlindCopy { T payload; }
+BlindCopy copy = BlindCopy(value);
+store = *cast(DeepUnqual!T*) &copy;
+```
+
+Then in your destructor, manually destroy the stored type(s):
+
+```
+destroy!false(payload);
+```
+
 # But... why?
 
 There is actually no good way in D today to create a type that is "like another type, but reassignable and
@@ -30,6 +57,18 @@ how we are supposed to use immutable types at all, practically, without it. So m
 for review and improvement.
 
 Hey, maybe somebody has a better idea.
+
+# Is this safe?
+
+Well, it's `@safe` so long as you `@trusted` me. :-)
+
+Nothing with this amount of pointer casting can truly be called safe. It's safe *so far as I know*, provided that you:
+
+- never expose a `DeepUnqual` of an immutable type by reference
+- always match up copy assignments (see `rebindable.Nullable`) with `destroy` calls.
+
+You can use `rebindable.ProblematicType` to test your container implementation for issues - compare the
+`rebindable.Nullable` unittests.
 
 # Example usage
 

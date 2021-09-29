@@ -1,7 +1,7 @@
 module rebindable.ProblematicType;
 
 // A deliberately problematic type for lifetime, constness etc.
-package struct ProblematicType
+public struct ProblematicType
 {
     import std.datetime : SysTime;
 
