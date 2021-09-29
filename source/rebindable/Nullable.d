@@ -20,7 +20,7 @@ struct Nullable(T)
     }
 
     ///
-    public bool isNull()
+    public bool isNull() const nothrow pure @safe
     {
         return this.isNull_;
     }
@@ -40,6 +40,7 @@ struct Nullable(T)
         isNull_ = false;
     }
 
+    ///
     public void nullify()
     {
         if (!this.isNull_)
@@ -62,6 +63,23 @@ struct Nullable(T)
         }
     }
 
+    ///
+    public bool opEquals(const Nullable other) const nothrow pure @safe
+    {
+        if (this.isNull != other.isNull)
+        {
+            return false;
+        }
+        if (this.isNull)
+        {
+            return true;
+        }
+        else
+        {
+            return payload == other.payload;
+        }
+    }
+
     private ref CopyConstness!(This, T) payload(this This)() @trusted
     {
         return *cast(typeof(return)*) &this.payload_;
@@ -74,6 +92,22 @@ struct Nullable(T)
         BlindCopy copy = BlindCopy(value);
         payload_ = *cast(DeepUnqual!T*) &copy;
     }
+}
+
+@nogc pure @safe unittest
+{
+    Nullable!(const int) ni;
+
+    assert(ni.isNull);
+
+    ni = 5;
+    assert(!ni.isNull);
+    assert(ni.get == 5);
+
+    ni.nullify;
+    assert(ni.isNull);
+
+    assert(ni == Nullable!(const int)());
 }
 
 @nogc pure @safe unittest
