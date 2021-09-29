@@ -1,6 +1,6 @@
 module rebindable.Nullable;
 
-import rebindable.DeepUnqual;
+import rebindable.Rebindable;
 import std.traits;
 
 /**
@@ -10,13 +10,13 @@ struct Nullable(T)
 {
     private bool isNull_ = true;
 
-    private DeepUnqual!T payload_;
+    private Rebindable!T payload;
 
     ///
     public this(T value)
     {
         this.isNull_ = false;
-        set(value);
+        this.payload.set(value);
     }
 
     ///
@@ -29,15 +29,15 @@ struct Nullable(T)
     public CopyConstness!(This, T) get(this This)()
     {
         assert(!isNull, "Attempted Nullable.get of empty Nullable");
-        return payload;
+        return payload.get;
     }
 
     ///
     public void opAssign(T value)
     {
         nullify;
-        set(value);
-        isNull_ = false;
+        payload.set(value);
+        this.isNull_ = false;
     }
 
     ///
@@ -45,7 +45,7 @@ struct Nullable(T)
     {
         if (!this.isNull_)
         {
-            destroy!false(payload);
+            destroy!false(payload.get);
             this.isNull_ = true;
         }
     }
@@ -59,7 +59,7 @@ struct Nullable(T)
         }
         else
         {
-            this = source.payload;
+            this = source.payload.get;
         }
     }
 
@@ -76,24 +76,12 @@ struct Nullable(T)
         }
         else
         {
-            return payload == other.payload;
+            return payload.get == other.payload.get;
         }
-    }
-
-    private ref CopyConstness!(This, T) payload(this This)() @trusted
-    {
-        return *cast(typeof(return)*) &this.payload_;
-    }
-
-    private void set(ref T value) @trusted
-    {
-        // copy value, but do not destroy it (ensures lifetimes match up)
-        static union BlindCopy { T payload; }
-        BlindCopy copy = BlindCopy(value);
-        payload_ = *cast(DeepUnqual!T*) &copy;
     }
 }
 
+///
 @nogc pure @safe unittest
 {
     Nullable!(const int) ni;
@@ -125,13 +113,16 @@ struct Nullable(T)
     int refs;
     int* refsPtr = () @trusted { return &refs; }();
     {
+        // construct
         auto c = Nullable!ProblematicType(ProblematicType(refsPtr));
         assert(refs == 1);
 
+        // reassign
         c = ProblematicType(refsPtr);
         assert(refs == 1);
         assert(c.get.properlyInitialized);
 
+        // release
         c.nullify;
         assert(refs == 0);
     }
