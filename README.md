@@ -93,8 +93,6 @@ assert(ni.isNull);
 assert(ni == Nullable!(const int)());
 ```
 
-# Example
-
 # But... why?
 
 There is actually no good way in D today to create a type that is "like another type, but reassignable and
