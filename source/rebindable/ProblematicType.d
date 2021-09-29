@@ -1,6 +1,18 @@
+/// A deliberately problematic type for lifetime, constness, etc.
 module rebindable.ProblematicType;
 
-// A deliberately problematic type for lifetime, constness etc.
+/**
+ * A deliberately problematic type for lifetime, constness etc.
+ *
+ * Use to test containers like so:
+ *
+ * ---
+ * int refs;
+ * int* refsPtr = () @trusted { return &refs; }();
+ * ... do things with ProblematicType(refsPtr) ...
+ * assert(refs == 0);
+ * ---
+ */
 public struct ProblematicType
 {
     import std.datetime : SysTime;

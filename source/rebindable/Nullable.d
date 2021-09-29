@@ -1,53 +1,45 @@
+/// A version of `std.typecons.Nullable` that reliably works with immutable data types.
 module rebindable.Nullable;
 
 import rebindable.Rebindable;
 import std.traits;
 
-/**
- * A version of std.typecons.Nullable that reliably works with immutable data types.
- */
+/// A version of `std.typecons.Nullable` that reliably works with immutable data types.
 struct Nullable(T)
 {
     private bool isNull_ = true;
 
     private Rebindable!T payload;
 
-    ///
+    /// Construct a new `Nullable!T`.
     public this(T value)
     {
         this.isNull_ = false;
         this.payload.set(value);
     }
 
-    ///
+    /// Return true if the `Nullable!T` does not contain a value.
     public bool isNull() const nothrow pure @safe
     {
         return this.isNull_;
     }
 
-    ///
+    /**
+     * Get the value stored previously.
+     * It is undefined to call this if no value is stored.
+     */
     public CopyConstness!(This, T) get(this This)()
     {
         assert(!isNull, "Attempted Nullable.get of empty Nullable");
         return payload.get;
     }
 
-    ///
+    /// Assign a new value.
     public void opAssign(T value)
     {
         nullify;
         payload.set(value);
         this.isNull_ = false;
-    }
-
-    ///
-    public void nullify()
-    {
-        if (!this.isNull_)
-        {
-            destroy!false(payload.get);
-            this.isNull_ = true;
-        }
     }
 
     ///
@@ -60,6 +52,16 @@ struct Nullable(T)
         else
         {
             this = source.payload.get;
+        }
+    }
+
+    /// If a value is stored, destroy it.
+    public void nullify()
+    {
+        if (!this.isNull_)
+        {
+            destroy!false(payload.get);
+            this.isNull_ = true;
         }
     }
 

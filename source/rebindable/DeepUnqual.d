@@ -1,3 +1,4 @@
+/// Replace a type with an "equivalent" type without constructors, destructors, and mutable.
 module rebindable.DeepUnqual;
 
 import std.meta;
@@ -8,7 +9,15 @@ import std.typecons;
  * `DeepUnqual!T` is a data type that is equivalent to `T` in terms of size, alignment, and GC properties,
  * except that it can be freely reassigned.
  *
- * All special methods of T, such as constructors, destructors and overloads, are lost.
+ * All methods of `T`, including constructors, destructors and overloads, are lost.
+ * In fact, the result type has barely anything to do with `T`, except the following properties:
+ *
+ * $(UL
+ *  $(LI mutable)
+ *  $(LI pointers where `T` has pointers)
+ *  $(LI non-pointer values where `T` has no pointers (best-effort).))
+ *
+ * In other words, `T` is equivalent to `DeepUnqual!T` for the purpose of memory management, and nothing else.
  */
 public template DeepUnqual(T)
 {
