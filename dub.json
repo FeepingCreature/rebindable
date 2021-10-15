@@ -6,5 +6,8 @@
 	"description": "D data structures that work for any type.",
 	"license": "Boost BSL-1.0",
 	"name": "rebindable",
-	"targetType": "library"
+	"targetType": "library",
+	"dependencies": {
+		"dshould": "*"
+	}
 }

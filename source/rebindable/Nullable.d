@@ -34,6 +34,19 @@ struct Nullable(T)
         return payload.get;
     }
 
+    /**
+     * Get the value stored previously.
+     * If no value is stored, `default` is returned.
+     */
+    public CopyConstness!(This, T) get(this This)(T default_)
+    {
+        if (isNull)
+        {
+            return default_;
+        }
+        return payload.get;
+    }
+
     /// Assign a new value.
     public void opAssign(T value)
     {
@@ -109,8 +122,10 @@ struct Nullable(T)
     assert(a.get == 3);
 
     Nullable!(const int) b;
+    assert(b.get(3) == 3);
     b = 7;
     assert(b.get == 7);
+    assert(b.get(3) == 7);
 
     int refs;
     int* refsPtr = () @trusted { return &refs; }();
