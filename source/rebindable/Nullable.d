@@ -73,13 +73,13 @@ struct Nullable(T)
     {
         if (!this.isNull_)
         {
-            destroy!false(payload.get);
+            this.payload.destroy;
             this.isNull_ = true;
         }
     }
 
     ///
-    public bool opEquals(const Nullable other) const nothrow pure @safe
+    public bool opEquals(const Nullable other) const pure @safe
     {
         if (this.isNull != other.isNull)
         {

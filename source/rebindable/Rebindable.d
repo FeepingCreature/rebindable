@@ -16,28 +16,77 @@ public struct Rebindable(T)
     }
 
     /**
-     * Get a reference to a previously stored value.
-     * Note that it is vital to not expose this reference to the user, if T may contain immutable fields by value!
+     * Move-return the stored value by value.
+     * This is equivalent to `get` followed by `destroy`.
+     *
+     * This operation invalidates the `Rebindable`.
+     * Until `set` is called again, `move` and `get` are undefined.
      */
-    public ref CopyConstness!(This, T) get(this This)() @nogc nothrow pure @trusted
+    public CopyConstness!(This, T) move(this This)() @safe
     {
-        return *cast(typeof(return)*) &this.store;
+        auto result = get;
+
+        destroy;
+        return result;
+    }
+
+    /**
+     * Replace a currently stored value with a new value.
+     * This is equivalent to `destroy` followed by `set`.
+     */
+    public void replace()(T value) @safe
+    {
+        destroy;
+        set(value);
+    }
+
+    /**
+     * Get a copy of a previously stored value.
+     */
+    public CopyConstness!(This, T) get(this This)() @nogc nothrow pure @safe
+    {
+        return reference;
     }
 
     /**
      * Set the `Rebindable` to a new value.
-     *
-     * Any existing stored value is *not* freed!
-     * You must free it manually with `destroy!false(rebindable.get);`.
-     *
+     * Calling this function while an existing value is stored is undefined.
      * The passed value is copied.
      */
-    public void set(ref T value) @trusted
+    public void set(T value) @trusted
     {
         // Since DeepUnqual doesn't call destructors, we deliberately leak one copy.
-        static union BlindCopy { T value; }
+        static union BlindCopy
+        {
+            T value;
+        }
+
         BlindCopy copy = BlindCopy(value);
-        this.store = *cast(DeepUnqual!T*) &copy;
+        this.store = *cast(DeepUnqual!T*)&copy;
+    }
+
+    /**
+     * Destroys the stored value.
+     * This is equivalent to a variable going out of scope.
+     */
+    public void destroy() @trusted
+    {
+        import std.typecons : No;
+
+        static if (is(T == class) || is(T == interface))
+        {
+            reference = null;
+        }
+        else
+        {
+            // call possible struct destructors
+            .destroy!(No.initialize)(reference);
+        }
+    }
+
+    private ref CopyConstness!(This, T) reference(this This)() @nogc nothrow pure @trusted
+    {
+        return *cast(typeof(return)*)&this.store;
     }
 }
 
@@ -57,7 +106,7 @@ unittest
 
         ~this()
         {
-            destroy!false(this.store.get);
+            this.store.destroy;
         }
 
         T get()
@@ -67,8 +116,7 @@ unittest
 
         void set(T value)
         {
-            destroy!false(this.store.get);
-            this.store.set(value);
+            this.store.replace(value);
         }
     }
 
