@@ -19,15 +19,11 @@ Reassignment will work even if the given type is immutable or contains immutable
 This can be useful when writing data structures that work with immutable types, but should not themselves
 be immutable.
 
-`rebindable` also contains `rebindable.Nullable`, a demo implementation of `Nullable` on top of `Rebindable`.
+`rebindable` also contains `rebindable.Nullable`, a demo implementation of `Nullable` on top of `Rebindable`,
+and `rebindable.AssocArray`, a replacement type for D associative arrays that allows values to be immutable.
 
-# Warning
-
-`rebindable.get` returns a ref value. **Do not** expose this reference to the user! If you overwrite the
-`rebindable` after taking a pointer to a returned `immutable` field, the user will observe `immutable`
-memory changing, thus destroying any const guarantee.
-
-Returning by value is fine.
+Warning: If a `rebindable.AssocArray` is collected while containing values, the destructors of values
+contained within will not be called! See bottom for why.
 
 # Example usage
 
@@ -93,6 +89,23 @@ assert(ni.isNull);
 assert(ni == Nullable!(const int)());
 ```
 
+### rebindable.AssocArray
+
+```
+import rebindable.AssocArray;
+
+immutable struct S
+{
+    int[] data;
+}
+
+AssocArray!(int, S) assocArray;
+
+assocArray[0] = S([5]);
+assocArray[0] = S([6]);
+assert(assocArray[0] == S([6]));
+```
+
 # But... why?
 
 There is actually no good way in D today to create a type that is "like another type, but reassignable and
@@ -120,3 +133,13 @@ Nothing with this amount of pointer casting can truly be called safe. It's safe 
 
 You can use `rebindable.ProblematicType` to test your container implementation for issues - compare the
 `rebindable.Nullable` unittests.
+
+# Why does AssocArray not call destructors?
+
+This weakness is unavoidable without reimplementing associative arrays from scratch.
+It arises because `AssocArray` uses a `Rebindable!Value[Key]` array internally, which has no destructors.
+And as it is a struct, `AssocArray`'s own destructor would be called on every scope exit.
+Maybe it could be ref-counted?
+Alternately, if `AssocArray` was implemented using a `Tuple(Key, Rebindable!Value)[]` internally,
+that array could be allocated as `Tuple(Key, Value)[]` and cast to the internal type,
+guaranteeing correct finalizer type info.
