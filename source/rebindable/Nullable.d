@@ -18,6 +18,15 @@ struct Nullable(T)
         this.payload.set(value);
     }
 
+    public this(ref return scope Nullable other)
+    {
+        this.isNull_ = other.isNull_;
+        if (!other.isNull_)
+        {
+            this.payload.set(other.payload.get);
+        }
+    }
+
     /// Return true if the `Nullable!T` does not contain a value.
     public bool isNull() const nothrow pure @safe
     {
@@ -193,6 +202,27 @@ pure @safe unittest
     }
 }
 
+@nogc pure @safe unittest
+{
+    import rebindable.ProblematicType : Fixture, ProblematicType;
+
+    with (Fixture())
+    {
+        // construct
+        auto c = Nullable!ProblematicType(problematicType);
+        assert(references == 1);
+
+        // copy
+        auto d = c;
+        assert(references == 2);
+        assert(d.get.properlyInitialized);
+
+        // release
+        c.nullify;
+        d.nullify;
+        assert(references == 0);
+    }
+}
 
 /**
  * Returns null if `nullable` is null, else `fun(nullable.get)`.
