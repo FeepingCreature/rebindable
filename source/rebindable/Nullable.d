@@ -28,7 +28,7 @@ struct Nullable(T)
      * Get the value stored previously.
      * It is undefined to call this if no value is stored.
      */
-    public CopyConstness!(This, T) get(this This)()
+    public T get(this This)()
     {
         assert(!isNull, "Attempted Nullable.get of empty Nullable");
         return payload.get;
@@ -38,7 +38,7 @@ struct Nullable(T)
      * Get the value stored previously.
      * If no value is stored, `default` is returned.
      */
-    public CopyConstness!(This, T) get(this This)(T default_)
+    public T get(this This)(T default_)
     {
         if (isNull)
         {
@@ -47,11 +47,20 @@ struct Nullable(T)
         return payload.get;
     }
 
-    /// Assign a new value.
+    /**
+     * Sets the stored value to a new value.
+     * Any existing value is destroyed.
+     */
     public void opAssign(T value)
     {
-        nullify;
-        payload.set(value);
+        if (!this.isNull_)
+        {
+            payload.replace(value);
+        }
+        else
+        {
+            payload.set(value);
+        }
         this.isNull_ = false;
     }
 
@@ -94,6 +103,27 @@ struct Nullable(T)
             return payload.get == other.payload.get;
         }
     }
+
+    /// Returns an equivalent Phobos Nullable instance.
+    public Nullable!T toNullable(this This)()
+    {
+        if (this.isNull_)
+        {
+            return Nullable!T();
+        }
+        return Nullable!T(payload.get);
+    }
+
+    static if (hasElaborateDestructor!T)
+    {
+        ~this()
+        {
+            if (!isNull)
+            {
+                payload.destroy;
+            }
+        }
+    }
 }
 
 ///
@@ -113,9 +143,28 @@ struct Nullable(T)
     assert(ni == Nullable!(const int)());
 }
 
+///
+pure @safe unittest
+{
+    Nullable!(immutable int[]) value;
+    assert(value.isNull);
+
+    value = [5].idup;
+    assert(value.isNull == false);
+    assert(value.get == [5]);
+
+    value.nullify;
+    assert(value.isNull == true);
+
+    const constValue = Nullable!(immutable int[])([8]);
+
+    assert(constValue.isNull == false);
+    assert(constValue.get == [8]);
+}
+
 @nogc pure @safe unittest
 {
-    import rebindable.ProblematicType : ProblematicType;
+    import rebindable.ProblematicType : Fixture, ProblematicType;
 
     Nullable!int a;
     a = 3;
@@ -127,21 +176,58 @@ struct Nullable(T)
     assert(b.get == 7);
     assert(b.get(3) == 7);
 
-    int refs;
-    int* refsPtr = () @trusted { return &refs; }();
+    with (Fixture())
     {
         // construct
-        auto c = Nullable!ProblematicType(ProblematicType(refsPtr));
-        assert(refs == 1);
+        auto c = Nullable!ProblematicType(problematicType);
+        assert(references == 1);
 
         // reassign
-        c = ProblematicType(refsPtr);
-        assert(refs == 1);
+        c = problematicType;
+        assert(references == 1);
         assert(c.get.properlyInitialized);
 
         // release
         c.nullify;
-        assert(refs == 0);
+        assert(references == 0);
     }
-    assert(refs == 0);
+}
+
+
+/**
+ * Returns null if `nullable` is null, else `fun(nullable.get)`.
+ * When `fun` returns a `Nullable`, reuses its null state.
+ */
+public auto apply(alias fun, T: Nullable!U, U)(const T nullable)
+{
+    import std.functional : unaryFun;
+
+    alias ReturnType = typeof(unaryFun!fun(nullable.get));
+
+    static if (is(ReturnType : Nullable!S, S))
+    {
+        alias Result = ReturnType;
+    }
+    else
+    {
+        alias Result = Nullable!ReturnType;
+    }
+
+    if (nullable.isNull)
+    {
+        return Result();
+    }
+    return Result(unaryFun!fun(nullable.get));
+}
+
+///
+unittest
+{
+    Nullable!int a;
+
+    assert(a.apply!(i => i * i) == Nullable!int());
+
+    a = 5;
+
+    assert(a.apply!(i => i * i) == Nullable!int(25));
 }

@@ -7,7 +7,5 @@
 	"license": "Boost BSL-1.0",
 	"name": "rebindable",
 	"targetType": "library",
-	"dependencies": {
-		"dshould": "*"
-	}
+	"dependencies": {}
 }

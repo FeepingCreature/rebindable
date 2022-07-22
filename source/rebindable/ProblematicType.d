@@ -2,6 +2,29 @@
 module rebindable.ProblematicType;
 
 /**
+ * Wrapper for ProblematicType's reference counting.
+ */
+public struct Fixture
+{
+    private int references_;
+
+    public int references() @nogc nothrow pure @safe
+    {
+        return this.references_;
+    }
+
+    public ProblematicType problematicType() @nogc nothrow pure @safe
+    {
+        return ProblematicType(referencesPointer);
+    }
+
+    private int* referencesPointer() return @nogc nothrow pure @trusted
+    {
+        return &references_;
+    }
+}
+
+/**
  * A deliberately problematic type for lifetime, constness etc.
  *
  * Use to test containers like so:
@@ -35,7 +58,7 @@ public struct ProblematicType
     // count references to confirm that every constructor call matches one destructor call
     int* refs;
 
-    this(int* refs) pure @safe @nogc
+    this(int* refs) nothrow pure @safe @nogc
     {
         this.properlyInitialized = true;
         this.refs = refs;

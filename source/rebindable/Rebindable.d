@@ -4,7 +4,9 @@ module rebindable.Rebindable;
 import rebindable.DeepUnqual;
 import std.traits;
 
-/// `Rebindable!T` is a container for `T` that permits managing `T`'s lifetime explicitly.
+/**
+ * `Rebindable!T` is a container for `T` that permits managing `T`'s lifetime explicitly.
+ */
 public struct Rebindable(T)
 {
     private DeepUnqual!T store;
@@ -124,4 +126,68 @@ unittest
 
     ds.set(5);
     assert(ds.get == 5);
+}
+
+// set and destroy
+unittest
+{
+    import rebindable.ProblematicType : Fixture, ProblematicType;
+
+    with (Fixture())
+    {
+        Rebindable!ProblematicType container;
+
+        {
+            auto value = problematicType;
+
+            assert(references == 1);
+            container.set(value);
+        }
+        assert(references == 1);
+        container.destroy;
+        assert(references == 0);
+    }
+}
+
+// set and replace
+unittest
+{
+    import rebindable.ProblematicType : Fixture, ProblematicType;
+
+    with (Fixture())
+    {
+        Rebindable!ProblematicType container;
+
+        container.set(problematicType);
+        assert(references == 1);
+        {
+            auto value = container.get;
+
+            container.replace(problematicType);
+            assert(references == 2);
+        }
+        assert(references == 1);
+        container.destroy;
+        assert(references == 0);
+    }
+}
+
+// set and move
+unittest
+{
+    import rebindable.ProblematicType : Fixture, ProblematicType;
+
+    with (Fixture())
+    {
+        Rebindable!ProblematicType container;
+
+        container.set(problematicType);
+        assert(references == 1);
+        {
+            auto value = container.move;
+
+            assert(references == 1);
+        }
+        assert(references == 0);
+    }
 }

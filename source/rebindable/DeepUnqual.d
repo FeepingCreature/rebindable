@@ -18,8 +18,11 @@ import std.typecons;
  *  $(LI non-pointer values where `T` has no pointers (best-effort).))
  *
  * In other words, `T` is equivalent to `DeepUnqual!T` for the purpose of memory management, and nothing else.
+ *
+ * This type is used to store immutable values in a mutable data structure; see `rebindable.Rebindable`. This does not
+ * violate D's constness guarantees as long as the head-immutable values are never exposed by reference.
  */
-public template DeepUnqual(T)
+package template DeepUnqual(T)
 {
     alias DeepUnqual = DeepUnqualImpl!T;
 
@@ -40,7 +43,14 @@ private template DeepUnqualImpl(T)
             align(T.alignof)
             struct DeepUnqualImpl
             {
-                void[T.sizeof] data;
+                static if (hasIndirections!T)
+                {
+                    void[T.sizeof] data;
+                }
+                else
+                {
+                    ubyte[T.sizeof] data;
+                }
             }
         }
         else
@@ -115,10 +125,6 @@ private template anyPairwiseEqual(T...)
     static if (T.length == 0 || T.length == 1)
     {
         enum anyPairwiseEqual = false;
-    }
-    else static if (T.length == 2)
-    {
-        enum anyPairwiseEqual = T[0] == T[1];
     }
     else
     {
