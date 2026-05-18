@@ -13,7 +13,7 @@ public struct Fixture
         return this.references_;
     }
 
-    public ProblematicType problematicType() @nogc nothrow pure @safe
+    public ProblematicType problematicType() @nogc nothrow pure @safe return
     {
         return ProblematicType(referencesPointer);
     }
